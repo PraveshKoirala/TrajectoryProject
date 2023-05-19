@@ -1,13 +1,26 @@
 module Trajectory
+    
     # Uses solver to extract a feasible point
 
     using Symbolics
     using LinearAlgebra
     using Random
 
-    # p for problem
-    using Ridge: RidgeProblem as p
     Random.seed!(20)
+
+    if !(@isdefined POLICY)
+        println("Please specify which policy to use.")
+        println("Set POLICY=1 for linear and POLICY=2 for non-linear.")
+        throw(ArgumentError("Policy not set."))
+    end
+
+    if POLICY == 1
+        println("Working with Linear Policy. An initial feasible point will be obtained using the Solver.")
+        include("trajectory_tri_level.jl")
+    else
+        println("Working with NonLinear Policy. An initial feasible point is being used manually.")
+        include("trajectory_tri_level_nonlin.jl")
+    end
 
     # Gradient of the upper function w.r.t all decision variables.
     JF_tau = Symbolics.gradient(F_tau(x_), x_)
@@ -303,4 +316,6 @@ module Trajectory
     plot!(LinRange(X[1], D, 20), [X[2] for i in 1:20], c=:blue, ls=:dash)
     plot!(τx, τy, c=:purple, seriestype=:scatter)
     plot!(px, py, c=:red, seriestype=:path)
+
+
 end
