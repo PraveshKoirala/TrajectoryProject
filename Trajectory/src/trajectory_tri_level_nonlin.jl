@@ -13,7 +13,7 @@ D = 20      #destination plane, any value larger than the obstacle should be fin
 function NLinearPI(xnm1)
     δ = 1
     # Linear policy, just move δ step forward in x direction
-    return xnm1[1] + δ, xnm1[2] + 0.5*sin(xnm1[1]+δ)
+    return xnm1[1] + δ, xnm1[2] + 0.5*sin(3*(xnm1[1]+δ))
 end
 
 PI = NLinearPI
@@ -91,3 +91,4 @@ constraints_map = Dict(1=>[], 2=>1:G_t_length, 3=>(G_t_length+1):(G_t_length+G_T
 
 # Manual initial feasible point.
 x_s = [5., 0., 100., 100.];
+x_s = [0., 5., 4.245841141467531, 3.6562209999999067];
