@@ -11,6 +11,8 @@ module Ridge
     function G(X)
         return []
     end
+    
+    I = [1, 2]      # upper controls both x1 and x2
 
     function f(X)
         return 0.5 * (X[1]-X[2])^2
@@ -23,12 +25,14 @@ module Ridge
         ]
     end
 
+    i = [2]     # lower controls only x2
+
 
     # Just two variables x1 and x2
     RidgeProblem = MultiLevelProblem(2)
 
-    RidgeProblem.addLevel!(Problem(F, G))
-    RidgeProblem.addLevel!(Problem(f, g))
+    RidgeProblem.addLevel!(Problem(F, G, I))
+    RidgeProblem.addLevel!(Problem(f, g, i))
 
     println(RidgeProblem.levels())
     println(RidgeProblem.Jf(1))
