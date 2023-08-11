@@ -1,8 +1,11 @@
 module Trajectory
+    # include("solvefull.jl")
     # include("Problems/trajectory_linear.jl")
-    # include("Problems/trajectory_nonlinear.jl")
-    include("Problems/AiyoshiShimizu1984Ex2.jl")
-    include("Problems/Bard1988Ex2.jl")
+    include("Problems/trajectory_nonlinear.jl")
+    
+    # include("Problems/Sinha.jl")
+    # include("Problems/Tilahun.jl")
+    # include("Problems/NestedToll.jl")
 
     # using Symbolics
     using LinearAlgebra
@@ -10,12 +13,14 @@ module Trajectory
     using JuMP
     import Symbolics
     using Ipopt
+    using Base.Threads
+
     # p for problem
-    # using .Ridge: RidgeProblem as p
     # using .LinearTrajectory: TrajectoryProblem as p
-    # using .NonLinearTrajectory: TrajectoryProblem as p
-    # using .AS1984: AS1984Problem as p
-    using .Bard1988Ex2: Bard1988Ex2Problem as p
+    using .NonLinearTrajectory: TrajectoryProblem as p
+    # using .SinhaEx1: SinhaProblem as p
+    # using .Tilahun: TilahunProblem as p
+    # using .NToll: NTollProblem as p
 
     Random.seed!(20)
 
@@ -41,17 +46,15 @@ module Trajectory
         # I: The index set that this player controls
         # Jac: Jacobian of this function
         I = p[player_level].I
-        Jac = p.Jf(player_level)       # jacobian of this player
+        # Jac = p.Jf(player_level)       # jacobian of this player
 
         # must satisfy constraints of *all* bottom players
         cset = player_level:p.levels()
 
-        alpha = 2
-        beta = 0.1
+        alpha = p.alpha
         
         # one of the directions returned is this player's gradient
-        x_g = -evaluate(Jac, x) .* beta
-
+        # x_g = -evaluate(Jac, x) .* beta
         d = length(x)
         num_directions = 0
         
@@ -62,29 +65,17 @@ module Trajectory
         x_directions = []
         # direction of the gradient    
         new_direction = []
-        infeasible_attempts = 0
         while num_directions < N
-            new_direction = isempty(new_direction) ? x_g : (rand(d) .- 0.5 ) .* alpha
+            # new_direction = isempty(new_direction) ? x_g : (rand(d) .- 0.5 ) .* alpha
+            new_direction = (rand(d) .- 0.5 ) .* alpha
             new_direction[Ī] .= 0
-            x_new = x + new_direction
-            if maintain_feasibility
-                feasible = is_feasible(x_new, cset)
-                if !feasible 
-                    infeasible_attempts += 1
-                    # Tried more than 2N times but couldn't get a good point,
-                    if infeasible_attempts > 2*N
-                        return isempty(x_directions) ? [] : x .+ x_directions
-                    end
-                    continue
-                end
-            end
-            x_directions = isempty(x_directions) ? x_new : hcat(x_directions, new_direction)
+            x_directions = isempty(x_directions) ? new_direction : hcat(x_directions, new_direction)
             num_directions += 1
         end
         return x.+x_directions
     end
 
-    function get_lower_moves(x_val, I, Jac, player_level=3)
+    function get_lower_moves(x_val, I, player_level=3)
         # x: Variable vector
         # I: index set of variables that this player controls
         # Jacobian of this player (not needed anymore)
@@ -99,6 +90,7 @@ module Trajectory
         global x = Nothing
         
         m = Model(Ipopt.Optimizer)
+        # set_attribute(m, "max_iter", 5)
         set_silent(m)
 
         # todo: use the start to start closer
@@ -110,6 +102,7 @@ module Trajectory
         
         # Add constraint
         for i in eachindex(C)
+            # println("@NLconstraint(m, $(repr(C[i])) >= 0)")
             eval(Meta.parse("@NLconstraint(m, $(repr(C[i])) >= 0)"))
         end
         # Add objective
@@ -120,23 +113,31 @@ module Trajectory
     end
 
     function get_next_step(n, x, player_id)
+        n = p[player_id].n
         I = p[player_id].I
-        Jf = p.Jf(player_id)
+        # Jf = p.Jf(player_id)
         f = p[player_id].f
+        # c_set = player_id:p.levels()
+        c_set = player_id:player_id
 
         if player_id == p.levels()
             # This is the bottom level player
-            x = get_lower_moves(x, I, Jf, player_id)
-            return x
+            x = get_lower_moves(x, I, player_id)
+            return is_feasible(x, c_set) ? x : Nothing
         end
 
-        c_set = player_id:p.levels()
         # does this point satisfy constraint? (It must when starting out for all lower)
-        feasible = is_feasible(x, c_set)
 
         X_t = get_upper_moves(n, x, player_id)
-        X_t = isempty(X_t) ? x[:,:] : hcat(x, X_t)
-        num_points = size(X_t)[2]
+        
+        num_points = size(X_t)
+        if length(num_points) == 1
+            if num_points[0] == 0 return Nothing end
+            num_points = 1
+        else
+            num_points = num_points[2]
+        end
+
         candidates = []
         for m = 1:num_points
             x_t = X_t[:, m]
@@ -161,15 +162,26 @@ module Trajectory
         return min_x
     end
 
+    function approximate(P, K=15)
+       K = min(K, length(P))
+       P = P[end-K+1:end]   # last k samples
+       f = map(P) do xk
+            map(i -> p[i].f(xk)[1], 1:p.levels())
+       end
+       return P[argmin(f)]
+    end
+
     function run_opt()
         x_s = p.x_s
+        # approximate smoothing
+        P = []
         # Uses solver to find feasible point inside the constraint boundary
         println("Starting with a feasible point found for the problem: ", x_s)
         # Now that we have a feasible point, we can execute the montecarlo method.
 
         # number of gradient to sample for top player
         if !(@isdefined N)
-            N = 10
+            N = 5
         end
         println("Running with samples per player N = ", N, ". To change it, just set the value in the terminal.")
         println()
@@ -199,7 +211,8 @@ module Trajectory
                 println("No new points were found. Keeping this one.")
                 x_s = last
             end
-
+            push!(P, x_s)
+            println(x_s)
             if all(x_s ≈ last)
                 println("Continuing with the same point.")
                 didnt_update_since += 1
@@ -213,9 +226,18 @@ module Trajectory
                 println()
                 didnt_update_since = 0
             end
+            # Decrease alpha per iteration
+            p.alpha /= p.cooldown
         end
-
+        
         println("Concluded with the following statistics:")
+        println("Top objective= ", p[1].f(x_s))
+        println("x= ", x_s)
+        println("Feasible?= ", is_feasible(x_s))
+
+        println("Smoothed solution:")
+        # Remove this line to remove the smoothing
+        x_s = approximate(P)
         println("Top objective= ", p[1].f(x_s))
         println("x= ", x_s)
         println("Feasible?= ", is_feasible(x_s))
