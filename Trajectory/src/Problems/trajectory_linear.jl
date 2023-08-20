@@ -9,7 +9,18 @@ module LinearTrajectory
     r = 5        #radius of the feasibility region in positive quadrant
     R = [r, r]  # center of the feasibility circle
 
-    O = [12, 9]  # obstacle center
+    # O = [15, 13]  # Top objective= (-17.350494166717795,)
+                    # x= [2.6495058332822037, 9.346829770275754, 10.135786580949945, 9.46849889575728]
+                    
+    # O = [12, 9]   # Top objective= (-19.592984358059056,)
+                    # x= [0.4070156419409441, 6.955217184755138, 0.40478628047151544, 0.34679850181433547]
+                    
+    # O = [15, 5]   # Top objective= (-19.471897308511,)
+                    # x= [0.5281026914889992, 3.056468958195349, 0.02871955068917198, -9.880900609996543e-9]
+                    
+    O = [12, -3]    # Top objective= (-16.715481849682547,)
+                    # x= [3.2845181503174548, 0.46271391595835354, 9.71352702589218, 8.071338249138893]
+                    
     or = 2      # radius of the obstacle
 
     N_τ = 20     #number of trajectory points is n+1
@@ -61,7 +72,7 @@ module LinearTrajectory
     # objective for upper
     function F_t(x)
         t = x[tdim][1]
-        return .5*t^2
+        return t
     end
 
     function G_t(x)
@@ -87,9 +98,9 @@ module LinearTrajectory
     TrajectoryProblem = MultiLevelProblem(4)
     
     # For the first level, the second objective is more important because of the shared degree of freedom
-    TrajectoryProblem.addLevel!(Problem((F_t, F_tau), G_tau, xdim))
-    TrajectoryProblem.addLevel!(Problem(F_t, G_t, tdim))
-    TrajectoryProblem.addLevel!(Problem(F_T, G_T, Tdim))
+    TrajectoryProblem.addLevel!(Problem(F_tau, G_tau, xdim, 2))
+    TrajectoryProblem.addLevel!(Problem(F_t, G_t, vcat(xdim, tdim), 10))
+    TrajectoryProblem.addLevel!(Problem(F_T, G_T, Tdim, 1))
     # TrajectoryProblem.visualize = visualize
 
     function TrajectoryProblem.visualize(x; kwargs...)
@@ -107,23 +118,27 @@ module LinearTrajectory
             τx = push!(τx, tx)
             τy = push!(τy, ty)
             tx, ty = PI([tx, ty])
+            if tx > D
+                break
+            end
         end
 
         # feasible region
-        plot(circleShape(r, r, r), seriestype=[:shape,], c=:blue, linecolor= :black, fillalpha=0.2, aspect_ratio=1)
+        plot(circleShape(r, r, r), label="Feasible Region", seriestype=[:shape,], c=:blue, linecolor= :black, fillalpha=0.2, aspect_ratio=1)
         #obstacle
-        plot!(circleShape(O[1], O[2], or), seriestype=[:shape,], c=:red, fillalpha=0.2, aspect_ratio=1)
-        #value of x
-        plot!([X[1]], [X[2]], seriestype=:scatter, c=:blue)
+        plot!(circleShape(O[1], O[2], or), label="Obstacle", seriestype=[:shape,], c=:red, fillalpha=0.2, aspect_ratio=1)
+        
 
         #Draw x1=D plane
-        plot!([D for i in 0:20], 0:20)
+        plot!([D for i in 0:20], 0:20, label="Finish Line")
 
         #Draw taus
-        plot!(LinRange(X[1], D, 20), [X[2] for i in 1:20], c=:blue, ls=:dash)
-        plot!(τx, τy, c=:purple, seriestype=:scatter)
+        # plot!(LinRange(X[1], D, 20), [X[2] for i in 1:20], c=:blue, ls=:dash)
+        plot!(τx, τy, c=:purple, seriestype=:scatter, label="Trajectory")
         px, py = kwargs[:px], kwargs[:py]
-        plot!(px, py, c=:red, seriestype=:path)
+        plot!(px, py, c=:red, seriestype=:path, label="Path", alpha=0.2)
+        #value of x
+        plot!([X[1]], [X[2]], label="Initial Point", seriestype=:scatter, c=:blue)
     end
 
     function find_feasible_point(x_s)
@@ -133,9 +148,9 @@ module LinearTrajectory
         
         # To find a starting point, we linearly weigh the function objectives with the last level getting the most
         # weight. This is in hopes that we'll achieve something sensible or near the local optimum.
-        r1 = 1;
-        r2 = 10;
-        r3 = 100;
+        r1 = 1e5;
+        r2 = 1e-5;
+        r3 = 1;
     
         m = Model(Ipopt.Optimizer)
         @variable(m, x[i=1:dim])
@@ -152,9 +167,9 @@ module LinearTrajectory
         return value.(x)
     end
 
-    TrajectoryProblem.x_s = [0.015401027606127604, 5.14272294205888, 11, 10.878760000000172];
+    # TrajectoryProblem.x_s = [0.015401027606127604, 5.14272294205888, 11, 10.878760000000172];
     # TrajectoryProblem.x_s = [1.5702263167931156, 3.5173743496664365, 26.25196450419984, 26.24388944799616]
     TrajectoryProblem.x_s = find_feasible_point([0, 0])
-
+    TrajectoryProblem.MAX_ITER = 120
     export TrajectoryProblem
 end

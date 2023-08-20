@@ -10,10 +10,13 @@ module NonLinearTrajectory
     r = 5        #radius of the feasibility region in positive quadrant
     R = [r, r]  # center of the feasibility circle
 
-    O = [15, 13]  # obstacle center
-    # O = [15, 10]  # obstacle center
-    # O = [15, 10]  # obstacle center
-    # O = [15, 10]  # obstacle center
+    # O = [15, 13]  #Top objective= (-16.54265619642559,) x= [3.4573438035744104, 9.347089501645879, 7.160023554839176, 6.945337088855705]
+                    
+    # O = [12, 9]   #Top objective= (-19.063405146507908,) x= [0.9365948534920926, 7.114931364850168, 0.27987917569138565, -9.948138599028703e-9]
+                    
+    # O = [15, 5]   #Top objective= (-19.392657194066025,) x= [0.6073428059339729, 3.249753795269291, 0.2826270781413558, -9.997047706160918e-9]
+                    
+    O = [12, -3]    #Top objective= (-17.669922705633375,) x= [2.330077294366623, 0.9120245977963373, 10.37540497508202, 8.97481663371672]
 
     or = 2      # radius of the obstacle
 
@@ -75,7 +78,7 @@ module NonLinearTrajectory
         return [
             t-T,
             chi(x),
-            # t
+            t
         ]
     end
 
@@ -92,7 +95,7 @@ module NonLinearTrajectory
     TrajectoryProblem = MultiLevelProblem(4)
     
     # For the first level, the second objective is more important because of the shared degree of freedom
-    TrajectoryProblem.addLevel!(Problem((F_t, F_tau), G_tau, xdim, 2))
+    TrajectoryProblem.addLevel!(Problem(F_tau, G_tau, xdim, 2))
     TrajectoryProblem.addLevel!(Problem(F_t, G_t, vcat(xdim, tdim), 10))
     TrajectoryProblem.addLevel!(Problem(F_T, G_T, Tdim, 1)) # Last level player doesn't require sample count
     # TrajectoryProblem.visualize = visualize
@@ -170,5 +173,6 @@ module NonLinearTrajectory
     # TrajectoryProblem.x_s = [0.015401027606127604, 5.14272294205888, 11, 10.878760000000172];
     # TrajectoryProblem.x_s = [1.5702263167931156, 3.5173743496664365, 26.25196450419984, 26.24388944799616]
     TrajectoryProblem.x_s = find_feasible_point([0, r, 0, 0])
+    TrajectoryProblem.MAX_ITER = 120
     export TrajectoryProblem
 end

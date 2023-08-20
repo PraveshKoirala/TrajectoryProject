@@ -35,6 +35,7 @@ module Problems
         visualize:: Function = (x; kwargs...) -> ()   # the visualization function
         alpha = 2
         cooldown = 1        # means that the alpha will remain constant throughout
+        MAX_ITER = 100      # default iteration of 100
     end
 
     Base.getindex(MLP::MultiLevelProblem, i) = MLP.P[i]

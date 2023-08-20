@@ -1,28 +1,28 @@
 module Trajectory
     # include("solvefull.jl")
     # include("Problems/trajectory_linear.jl")
-    include("Problems/trajectory_nonlinear.jl")
+    # include("Problems/trajectory_nonlinear.jl")
     
     # include("Problems/Sinha.jl")
     # include("Problems/Tilahun.jl")
-    # include("Problems/NestedToll.jl")
+    include("Problems/NestedToll.jl")
 
     # using Symbolics
     using LinearAlgebra
     using Random
     using JuMP
+    using Statistics
     import Symbolics
     using Ipopt
     using Base.Threads
 
     # p for problem
     # using .LinearTrajectory: TrajectoryProblem as p
-    using .NonLinearTrajectory: TrajectoryProblem as p
+    # using .NonLinearTrajectory: TrajectoryProblem as p
     # using .SinhaEx1: SinhaProblem as p
     # using .Tilahun: TilahunProblem as p
-    # using .NToll: NTollProblem as p
+    using .NToll: NTollProblem as p
 
-    Random.seed!(20)
 
     function evaluate(expression, x)
         vars_mapping = Dict(zip(p.X, x))
@@ -49,7 +49,7 @@ module Trajectory
         # Jac = p.Jf(player_level)       # jacobian of this player
 
         # must satisfy constraints of *all* bottom players
-        cset = player_level:p.levels()
+        # cset = player_level:p.levels()
 
         alpha = p.alpha
         
@@ -187,9 +187,7 @@ module Trajectory
         println()
 
         didnt_update_since = 0
-        if !(@isdefined MAX_ITER)
-            MAX_ITER = 100
-        end
+        MAX_ITER = p.MAX_ITER
 
         println("Running with MAX_ITER = ", MAX_ITER, ". To change it, just set the value in the terminal.")
         # path

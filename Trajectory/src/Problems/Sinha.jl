@@ -1,6 +1,6 @@
 #10.1016/S0165-0114(02)00362-7
 #Reported optimum f1 = 16.25 at (2.25, 0, 0, 0.25)
-# After 100 iterations, obtained optimum at around 16.142 at [2.252, 0.006, 0.026, 0.232]
+# After 100 iterations, obtained optimum at around -16.116476687436755 at [2.192775684612018, 0.07629909718419503, -1.0001904761907603e-8, 0.2690747817962133]
 
 module SinhaEx1
     include("Problems.jl")
@@ -38,6 +38,5 @@ module SinhaEx1
 
     SinhaProblem.x_s = [0.4, 0.4, 0.4, 0.4]
     SinhaProblem.alpha = 1
-    # SinhaProblem.cooldown = 1.015
     export SinhaProblem
 end

@@ -2,7 +2,7 @@
 # Using Evolutionary Strategy, Inspired 
 # by Natural Adaptation
 # Reported approximate optimum f1 = -0.5 at (0.5, 0, 0.0095) (Completely wrong)
-# After 100 iterations, obtained optimum at around -0.479 at [0.488, 0.002, 0.488]
+# After 100 iterations, obtained optimum at around -0.4577098258046362 at [0.481259151817539, 0.005887331503225691, 0.48125915922112483]
 
 # O (does not, wrong) -> P1 (matches my answer)
 module Tilahun
