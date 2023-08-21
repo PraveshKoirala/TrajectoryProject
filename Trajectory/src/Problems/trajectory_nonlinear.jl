@@ -10,13 +10,13 @@ module NonLinearTrajectory
     r = 5        #radius of the feasibility region in positive quadrant
     R = [r, r]  # center of the feasibility circle
 
-    # O = [15, 13]  #Top objective= (-16.54265619642559,) x= [3.4573438035744104, 9.347089501645879, 7.160023554839176, 6.945337088855705]
+    O = [15, 13]  #Top objective= (-16.54265619642559,) x= [3.4573438035744104, 9.347089501645879, 7.160023554839176, 6.945337088855705]
                     
     # O = [12, 9]   #Top objective= (-19.063405146507908,) x= [0.9365948534920926, 7.114931364850168, 0.27987917569138565, -9.948138599028703e-9]
                     
     # O = [15, 5]   #Top objective= (-19.392657194066025,) x= [0.6073428059339729, 3.249753795269291, 0.2826270781413558, -9.997047706160918e-9]
                     
-    O = [12, -3]    #Top objective= (-17.669922705633375,) x= [2.330077294366623, 0.9120245977963373, 10.37540497508202, 8.97481663371672]
+    # O = [12, -3]    #Top objective= (-17.669922705633375,) x= [2.330077294366623, 0.9120245977963373, 10.37540497508202, 8.97481663371672]
 
     or = 2      # radius of the obstacle
 
@@ -27,9 +27,13 @@ module NonLinearTrajectory
     function NLinearPI(xnm1)
         δ = 1
         # Linear policy, just move δ step forward in x direction
-        return xnm1[1] + δ, xnm1[2] + 0.5*sin(3*(xnm1[1]+δ))
+        return xnm1[1] + δ, xnm1[2] + 0.5*(sin(3*(xnm1[1]+δ))-sin(3*xnm1[1]))
     end
-
+    function NLinearPIPlot(xnm1)
+        δ = 0.1
+        # Linear policy, just move δ step forward in x direction
+        return xnm1[1] + δ, xnm1[2] + 0.5*(sin(3*(xnm1[1]+δ))-sin(3*xnm1[1]))
+    end
     PI = NLinearPI
 
     # Tri-level problem
@@ -96,7 +100,7 @@ module NonLinearTrajectory
     
     # For the first level, the second objective is more important because of the shared degree of freedom
     TrajectoryProblem.addLevel!(Problem(F_tau, G_tau, xdim, 2))
-    TrajectoryProblem.addLevel!(Problem(F_t, G_t, vcat(xdim, tdim), 10))
+    TrajectoryProblem.addLevel!(Problem(F_t, G_t, vcat(xdim, tdim), 5))
     TrajectoryProblem.addLevel!(Problem(F_T, G_T, Tdim, 1)) # Last level player doesn't require sample count
     # TrajectoryProblem.visualize = visualize
 
@@ -120,11 +124,26 @@ module NonLinearTrajectory
             end
         end
 
+        # plot the actual sinusoid as well
+        lx = []
+        ly = []
+        tx, ty = X[1], X[2]
+        for n in 1:10000
+            lx = push!(lx, tx)
+            ly = push!(ly, ty)
+            tx, ty = NLinearPIPlot([tx, ty])
+            if tx > D
+                break
+            end
+        end
+
         # feasible region
         plot(circleShape(r, r, r), label="Feasible Region", seriestype=[:shape,], c=:blue, linecolor= :black, fillalpha=0.2, aspect_ratio=1)
         #obstacle
         plot!(circleShape(O[1], O[2], or), label="Obstacle", seriestype=[:shape,], c=:red, fillalpha=0.2, aspect_ratio=1)
         
+        # plot the sinusoid
+        plot!(lx, ly, c=:green, alpha=0.4, label="Estimated Trajectory", seriestype=:path)
 
         #Draw x1=D plane
         plot!([D for i in 0:20], 0:20, label="Finish Line")
@@ -174,5 +193,6 @@ module NonLinearTrajectory
     # TrajectoryProblem.x_s = [1.5702263167931156, 3.5173743496664365, 26.25196450419984, 26.24388944799616]
     TrajectoryProblem.x_s = find_feasible_point([0, r, 0, 0])
     TrajectoryProblem.MAX_ITER = 120
+    TrajectoryProblem.alpha = 3
     export TrajectoryProblem
 end

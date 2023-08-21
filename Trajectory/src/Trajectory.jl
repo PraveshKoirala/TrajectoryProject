@@ -1,11 +1,11 @@
 module Trajectory
     # include("solvefull.jl")
     # include("Problems/trajectory_linear.jl")
-    # include("Problems/trajectory_nonlinear.jl")
+    include("Problems/trajectory_nonlinear.jl")
     
     # include("Problems/Sinha.jl")
     # include("Problems/Tilahun.jl")
-    include("Problems/NestedToll.jl")
+    # include("Problems/NestedToll.jl")
 
     # using Symbolics
     using LinearAlgebra
@@ -18,10 +18,10 @@ module Trajectory
 
     # p for problem
     # using .LinearTrajectory: TrajectoryProblem as p
-    # using .NonLinearTrajectory: TrajectoryProblem as p
+    using .NonLinearTrajectory: TrajectoryProblem as p
     # using .SinhaEx1: SinhaProblem as p
     # using .Tilahun: TilahunProblem as p
-    using .NToll: NTollProblem as p
+    # using .NToll: NTollProblem as p
 
 
     function evaluate(expression, x)
@@ -132,12 +132,13 @@ module Trajectory
         
         num_points = size(X_t)
         if length(num_points) == 1
-            if num_points[0] == 0 return Nothing end
+            if num_points[0] == 0 return Nothing end    # couldn't sample anything
             num_points = 1
         else
             num_points = num_points[2]
         end
 
+        X_t = hcat(x, X_t)  # also include the zero direction
         candidates = []
         for m = 1:num_points
             x_t = X_t[:, m]
