@@ -170,6 +170,7 @@ module LinearTrajectory
     # TrajectoryProblem.x_s = [0.015401027606127604, 5.14272294205888, 11, 10.878760000000172];
     # TrajectoryProblem.x_s = [1.5702263167931156, 3.5173743496664365, 26.25196450419984, 26.24388944799616]
     TrajectoryProblem.x_s = find_feasible_point([0, 0])
-    TrajectoryProblem.MAX_ITER = 120
+    TrajectoryProblem.MAX_ITER = 150
+    TrajectoryProblem.alpha = 3
     export TrajectoryProblem
 end

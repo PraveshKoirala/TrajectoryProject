@@ -163,7 +163,7 @@ module Trajectory
         return min_x
     end
 
-    function approximate(P, K=15)
+    function approximate(P, K=10)
        K = min(K, length(P))
        P = P[end-K+1:end]   # last k samples
        f = map(P) do xk
@@ -245,4 +245,5 @@ module Trajectory
     end
 
     export run_opt
+    export p
 end
