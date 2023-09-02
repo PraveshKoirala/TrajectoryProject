@@ -1,7 +1,8 @@
 module Trajectory
     # include("solvefull.jl")
-    # include("Problems/trajectory_linear.jl")
-    include("Problems/trajectory_nonlinear.jl")
+    include("Problems/trajectory_linear.jl")
+    # include("Problems/trajectory_nonlinear.jl")
+    # include("Problems/ConflictingObjective.jl")
     
     # include("Problems/Sinha.jl")
     # include("Problems/Tilahun.jl")
@@ -17,8 +18,9 @@ module Trajectory
     using Base.Threads
 
     # p for problem
-    # using .LinearTrajectory: TrajectoryProblem as p
-    using .NonLinearTrajectory: TrajectoryProblem as p
+    using .LinearTrajectory: TrajectoryProblem as p
+    # using .NonLinearTrajectory: TrajectoryProblem as p
+    # using .COExample: COProblem as p
     # using .SinhaEx1: SinhaProblem as p
     # using .Tilahun: TilahunProblem as p
     # using .NToll: NTollProblem as p
