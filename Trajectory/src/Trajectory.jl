@@ -1,8 +1,8 @@
 module Trajectory
     # include("solvefull.jl")
-    include("Problems/trajectory_linear.jl")
+    # include("Problems/trajectory_linear.jl")
     # include("Problems/trajectory_nonlinear.jl")
-    # include("Problems/ConflictingObjective.jl")
+    include("Problems/AnandalingamDecentralized.jl")
     
     # include("Problems/Sinha.jl")
     # include("Problems/Tilahun.jl")
@@ -18,9 +18,9 @@ module Trajectory
     using Base.Threads
 
     # p for problem
-    using .LinearTrajectory: TrajectoryProblem as p
+    # using .LinearTrajectory: TrajectoryProblem as p
     # using .NonLinearTrajectory: TrajectoryProblem as p
-    # using .COExample: COProblem as p
+    using .ALEx: ALProblem as p
     # using .SinhaEx1: SinhaProblem as p
     # using .Tilahun: TilahunProblem as p
     # using .NToll: NTollProblem as p
@@ -78,40 +78,43 @@ module Trajectory
     end
 
     function get_lower_moves(x_val, I, player_level=3)
+        # Eventually we want to solve the final level using a solver like PATH but for testing purposes,
+        # let's encode the final complete solution as high alpha and large number of samples.
+        return x_val
         # x: Variable vector
         # I: index set of variables that this player controls
         # Jacobian of this player (not needed anymore)
-        dim = length(p.X)
+        # dim = length(p.X)
         
-        @Symbolics.variables x[1:dim]
-        # Get objective and constraint of the lower:
-        O = p[player_level].f(x)[end]
-        C = p[player_level].g(x)
+        # @Symbolics.variables x[1:dim]
+        # # Get objective and constraint of the lower:
+        # O = p[player_level].f(x)[end]
+        # C = p[player_level].g(x)
         
-        global m = Nothing
-        global x = Nothing
+        # global m = Nothing
+        # global x = Nothing
         
-        m = Model(Ipopt.Optimizer)
-        # set_attribute(m, "max_iter", 5)
-        set_silent(m)
+        # m = Model(Ipopt.Optimizer)
+        # # set_attribute(m, "max_iter", 5)
+        # set_silent(m)
 
-        # todo: use the start to start closer
-        @variable(m, x[i=1:dim])
+        # # todo: use the start to start closer
+        # @variable(m, x[i=1:dim])
 
-        # player only controls their own variables
-        Ī = setdiff(1:dim, I)
-        @constraint(m, x[Ī] .== x_val[Ī])
+        # # player only controls their own variables
+        # Ī = setdiff(1:dim, I)
+        # @constraint(m, x[Ī] .== x_val[Ī])
         
-        # Add constraint
-        for i in eachindex(C)
-            # println("@NLconstraint(m, $(repr(C[i])) >= 0)")
-            eval(Meta.parse("@NLconstraint(m, $(repr(C[i])) >= 0)"))
-        end
-        # Add objective
-        eval(Meta.parse("@NLobjective(m, Min, $(repr(O)))"))
+        # # Add constraint
+        # for i in eachindex(C)
+        #     # println("@NLconstraint(m, $(repr(C[i])) >= 0)")
+        #     eval(Meta.parse("@NLconstraint(m, $(repr(C[i])) >= 0)"))
+        # end
+        # # Add objective
+        # eval(Meta.parse("@NLobjective(m, Min, $(repr(O)))"))
 
-        optimize!(m)
-        return value.(x)
+        # optimize!(m)
+        # return value.(x)
     end
 
     function get_next_step(n, x, player_id)
@@ -160,9 +163,22 @@ module Trajectory
             # couldn't find any feasible direction
             return Nothing
         end
-        min_fx, min_x = minimum(candidates)
-        # Best possible result you could get from here
-        return min_x
+        f_values = [c[1] for c in candidates]   # tuple of all function f_values
+        # for a single function in each level, just return the minimizer
+        if length(f_values[1]) == 1 
+            min_fx, min_x = minimum(candidates)
+            return min_x
+        end
+        # to matrix
+        f_values = hcat([collect(e) for e in f_values]...)'
+        mins = minimum(f_values, dims=1)
+        maxes = maximum(f_values, dims=1)
+        # construct μ for each fᵢ that maps minimum fᵢ-> 1 and maximum fᵢ-> ϵ will represent willingness to move
+        ϵ = 0.1     #can't let mu be 0
+        mu(f_v) = max.(1 .+ (f_v .- mins)./(mins.-maxes), zero(f_v).+ϵ)
+        d(f_v) = prod(mu(f_v), dims=2)
+        favorable_idx = argmax(d(f_values))[1]
+        return candidates[favorable_idx][2]
     end
 
     function approximate(P, K=10)
