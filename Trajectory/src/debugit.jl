@@ -3,4 +3,5 @@ using Random
 using Trajectory
 Random.seed!(20)
 
-run_opt()
+t = @elapsed run_opt()
+println("Total Time taken: ", t)

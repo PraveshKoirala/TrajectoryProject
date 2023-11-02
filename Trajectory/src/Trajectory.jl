@@ -1,13 +1,13 @@
 module Trajectory
     # include("solvefull.jl")
-    include("Problems/trajectory_linear.jl")
+    # include("Problems/trajectory_linear.jl")
     # include("Problems/trajectory_nonlinear.jl")
     # include("Problems/ConflictingObjective.jl")
     
     # include("Problems/Sinha.jl")
     # include("Problems/Tilahun.jl")
     # include("Problems/NestedToll.jl")
-
+    include("Problems/NRidge.jl")
     # using Symbolics
     using LinearAlgebra
     using Random
@@ -18,13 +18,13 @@ module Trajectory
     using Base.Threads
 
     # p for problem
-    using .LinearTrajectory: TrajectoryProblem as p
+    # using .LinearTrajectory: TrajectoryProblem as p
     # using .NonLinearTrajectory: TrajectoryProblem as p
     # using .COExample: COProblem as p
     # using .SinhaEx1: SinhaProblem as p
     # using .Tilahun: TilahunProblem as p
     # using .NToll: NTollProblem as p
-
+    using .NRidge: NRidgeProblem as p
 
     function evaluate(expression, x)
         vars_mapping = Dict(zip(p.X, x))
@@ -179,29 +179,29 @@ module Trajectory
         # approximate smoothing
         P = []
         # Uses solver to find feasible point inside the constraint boundary
-        println("Starting with a feasible point found for the problem: ", x_s)
+        # println("Starting with a feasible point found for the problem: ", x_s)
         # Now that we have a feasible point, we can execute the montecarlo method.
 
         # number of gradient to sample for top player
         if !(@isdefined N)
             N = 5
         end
-        println("Running with samples per player N = ", N, ". To change it, just set the value in the terminal.")
-        println()
+        # println("Running with samples per player N = ", N, ". To change it, just set the value in the terminal.")
+        # println()
 
         didnt_update_since = 0
         MAX_ITER = p.MAX_ITER
 
-        println("Running with MAX_ITER = ", MAX_ITER, ". To change it, just set the value in the terminal.")
+        # println("Running with MAX_ITER = ", MAX_ITER, ". To change it, just set the value in the terminal.")
         # path
         px = [x_s[1]]
         py = [x_s[2]]
         for i = 1:MAX_ITER
             # global x_s, didnt_update_since, px, py
-            println("Iteration: ", i)
+            # println("Iteration: ", i)
             if didnt_update_since > 20
                 # Stagnated
-                println("Stagnated, breaking now...")
+                # println("Stagnated, breaking now...")
                 break
             end
 
@@ -209,24 +209,25 @@ module Trajectory
             x_s = get_next_step(N, x_s, 1)
 
             if x_s == Nothing
-                println("No new points were found. Keeping this one.")
+                # println("No new points were found. Keeping this one.")
                 x_s = last
             end
             push!(P, x_s)
-            println(x_s)
+            # println(x_s)
             if all(x_s ≈ last)
-                println("Continuing with the same point.")
+                # println("Continuing with the same point.")
                 didnt_update_since += 1
             else
-                println("Better point found in the neighborhood.")
-                println(x_s)
+                # println("Better point found in the neighborhood.")
+                # println(x_s)
                 push!(px, x_s[1])
                 push!(py, x_s[2])
-                println("Old objective: ", p[1].f(last), ". New objective: ", p[1].f(x_s))
-                println()
-                println()
+                # println("Old objective: ", p[1].f(last), ". New objective: ", p[1].f(x_s))
+                # println()
+                # println()
                 didnt_update_since = 0
             end
+            println(p[1].f(x_s)[1])
             # Decrease alpha per iteration
             p.alpha /= p.cooldown
         end
