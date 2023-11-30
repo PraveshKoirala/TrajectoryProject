@@ -6,8 +6,8 @@ module Trajectory
     
     # include("Problems/Sinha.jl")
     # include("Problems/Tilahun.jl")
-    # include("Problems/NestedToll.jl")
-    include("Problems/NRidge.jl")
+    include("Problems/NestedToll.jl")
+    # include("Problems/NRidge.jl")
     # using Symbolics
     using LinearAlgebra
     using Random
@@ -23,8 +23,8 @@ module Trajectory
     # using .COExample: COProblem as p
     # using .SinhaEx1: SinhaProblem as p
     # using .Tilahun: TilahunProblem as p
-    # using .NToll: NTollProblem as p
-    using .NRidge: NRidgeProblem as p
+    using .NToll: NTollProblem as p
+    # using .NRidge: NRidgeProblem as p
 
     function evaluate(expression, x)
         vars_mapping = Dict(zip(p.X, x))

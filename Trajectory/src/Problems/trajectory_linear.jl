@@ -9,7 +9,7 @@ module LinearTrajectory
     r = 5        #radius of the feasibility region in positive quadrant
     R = [r, r]  # center of the feasibility circle
 
-    # O = [15, 13]  # Top objective= (-17.350494166717795,)
+    O = [15, 13]  # Top objective= (-17.350494166717795,)
                     # x= [2.6495058332822037, 9.346829770275754, 10.135786580949945, 9.46849889575728]
                     
     # O = [12, 9]   # Top objective= (-19.592984358059056,)
@@ -18,7 +18,7 @@ module LinearTrajectory
     # O = [15, 5]   # Top objective= (-19.471897308511,)
                     # x= [0.5281026914889992, 3.056468958195349, 0.02871955068917198, -9.880900609996543e-9]
                     
-    O = [12, -3]    # Top objective= (-16.715481849682547,)
+    # O = [12, -3]    # Top objective= (-16.715481849682547,)
                     # x= [3.2845181503174548, 0.46271391595835354, 9.71352702589218, 8.071338249138893]
                     
     or = 2      # radius of the obstacle
