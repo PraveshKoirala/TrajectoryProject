@@ -1,4 +1,5 @@
 module CTF
+    include("constants.jl")
     include("Problems.jl")
     include("spline_methods.jl")
     using .Problems
@@ -8,11 +9,7 @@ module CTF
     ymin = -5
     ymax = 5
 
-    flags = [
-             0 2;
-             2 2;]
-    K = 4   # number of knot points x0, x1, x2, x3 back to x0 (not counted)
-
+    
     function F1(X)
         knots1 = reshape(X[1:(2*K)], (2, K))'
         knots2 = reshape(X[2*K+1:4*K], (2, K))'
@@ -25,7 +22,7 @@ module CTF
         id = l1 < l2 ? "S" : "L"
         short, shortlength, long, longlength = l1 < l2 ? (t1, l1, t2, l2) : (t2, l2, t1, l1)
         short_score, long_score = score(flags, short, shortlength, long,
-                                    longlength, false, 1)
+                                    longlength, false)
         if id == "S" return -short_score else return -long_score end
     end
     
@@ -41,7 +38,7 @@ module CTF
         id = l1 < l2 ? "S" : "L"
         short, shortlength, long, longlength = l1 < l2 ? (t1, l1, t2, l2) : (t2, l2, t1, l1)
         short_score, long_score = score(flags, short, shortlength, long,
-                                    longlength, true, 1)
+                                    longlength, true)
         if id == "S" return -short_score else return -long_score end
     end
 
@@ -60,21 +57,20 @@ module CTF
     # Three variables
     CTFProblem = MultiLevelProblem(3)
 
-    CTFProblem.addLevel!(Problem((F1,), G1, I1, 10, 1))
-    CTFProblem.addLevel!(Problem((F2,), G2, I2, 20, 2))
+    CTFProblem.addLevel!(Problem((F1,), G1, I1, 10, 4))
+    CTFProblem.addLevel!(Problem((F2,), G2, I2, 50, 4))
     CTFProblem.addLevel!(Problem((F3,), G3, I3, 0, 0))    # Dummy level, does not do anything.
 
     CTFProblem.x_s = rand(4*K) .* (xmax-xmin) .+ xmin
 
-    start1 = [1, -2]
-    start2 = [-1, -2]
+    
     # CTFProblem.x_s[1] = start1[1]
     # CTFProblem.x_s[2] = start1[2]
 
     # CTFProblem.x_s[2*K+1] = start2[1]
     # CTFProblem.x_s[2*K+2] = start2[2]
 
-    CTFProblem.x_s = vcat(repeat(start1, 4), repeat(start2, 4))
-    CTFProblem.MAX_ITER = 300
+    CTFProblem.x_s = vcat(repeat(start1, K), repeat(start2, K))
+    CTFProblem.MAX_ITER = 122
     export CTFProblem
 end

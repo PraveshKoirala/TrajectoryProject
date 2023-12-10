@@ -1,7 +1,8 @@
 module Trajectory
     # include("solvefull.jl")
     
-    include("CTF.jl")
+    # include("CTF_Nash.jl")
+    include("CTF_Stackelberg.jl")
     using Serialization
     using LinearAlgebra
     using Random
@@ -102,15 +103,16 @@ module Trajectory
             x_t = get_next_step(x_t, player_id+1)
             if x_t == Nothing
                 # couldn't find a feasible point
+                println("No feasible point")
                 continue
             end
             feasible = true
             f_xt = Nothing
             try
-                # f_xt = f(x_t) # does not hit breakpoint
-                f_xt = ( player_id == 1 ) ? CTF.F1(x_t) : CTF.F2(x_t)
+                f_xt = f(x_t) # does not hit breakpoint
+                # f_xt = (CTF.F1(x_t), CTF.F2(x_t))
             catch
-                println("Skipping collision trajectory")
+                # println("Skipping collision trajectory")
                 feasible = false
             end
             
@@ -123,9 +125,22 @@ module Trajectory
             # couldn't find any feasible direction
             return Nothing
         end
-        min_fx, min_x = minimum(candidates)
-        # Best possible result you could get from here
-        return min_x
+        f_values = [c[1] for c in candidates]   # tuple of all function f_values
+        # for a single function in each level, just return the minimizer
+        if length(f_values[1]) == 1 
+            min_fx, min_x = minimum(candidates)
+            return min_x
+        end
+        # to matrix
+        f_values = hcat([collect(e) for e in f_values]...)'
+        mins = minimum(f_values, dims=1)
+        maxes = maximum(f_values, dims=1)
+        # construct μ for each fᵢ that maps minimum fᵢ-> 1 and maximum fᵢ-> ϵ will represent willingness to move
+        ϵ = 0.1     #can't let mu be 0
+        mu(f_v) = max.(1 .+ (f_v .- mins)./(mins.-maxes), zero(f_v).+ϵ)
+        d(f_v) = prod(mu(f_v), dims=2)
+        favorable_idx = argmax(d(f_values))[1]
+        return candidates[favorable_idx][2]
     end
 
     function approximate(P, K=10)
