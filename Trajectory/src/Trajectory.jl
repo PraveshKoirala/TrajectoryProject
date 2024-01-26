@@ -1,13 +1,7 @@
 module Trajectory
-    # include("solvefull.jl")
-    # include("Problems/trajectory_linear.jl")
-    # include("Problems/trajectory_nonlinear.jl")
-    include("Problems/AnandalingamDecentralized.jl")
+    # include("Problems/RideShare.jl")
+    include("Problems/RideShareIN.jl")
     
-    # include("Problems/Sinha.jl")
-    # include("Problems/Tilahun.jl")
-    # include("Problems/NestedToll.jl")
-
     # using Symbolics
     using LinearAlgebra
     using Random
@@ -18,12 +12,7 @@ module Trajectory
     using Base.Threads
 
     # p for problem
-    # using .LinearTrajectory: TrajectoryProblem as p
-    # using .NonLinearTrajectory: TrajectoryProblem as p
-    using .ALEx: ALProblem as p
-    # using .SinhaEx1: SinhaProblem as p
-    # using .Tilahun: TilahunProblem as p
-    # using .NToll: NTollProblem as p
+    using .RSI: RSProblemI as p
 
 
     function evaluate(expression, x)
@@ -128,7 +117,8 @@ module Trajectory
         if player_id == p.levels()
             # This is the bottom level player
             x = get_lower_moves(x, I, player_id)
-            return is_feasible(x, c_set) ? x : Nothing
+            # return is_feasible(x, c_set) ? x : Nothing
+            return x
         end
 
         # does this point satisfy constraint? (It must when starting out for all lower)
@@ -152,6 +142,7 @@ module Trajectory
                 # couldn't find a feasible point
                 continue
             end
+            if !is_feasible(x_t, c_set) continue end
             f_xt = f(x_t)
             
             feasible = is_feasible(x_t, c_set)
@@ -250,14 +241,14 @@ module Trajectory
         println("Concluded with the following statistics:")
         println("Top objective= ", p[1].f(x_s))
         println("x= ", x_s)
-        println("Feasible?= ", is_feasible(x_s))
+        # println("Feasible?= ", is_feasible(x_s))
 
-        println("Smoothed solution:")
+        # println("Smoothed solution:")
         # Remove this line to remove the smoothing
-        x_s = approximate(P)
-        println("Top objective= ", p[1].f(x_s))
-        println("x= ", x_s)
-        println("Feasible?= ", is_feasible(x_s))
+        # x_s = approximate(P)
+        # println("Top objective= ", p[1].f(x_s))
+        # println("x= ", x_s)
+        # println("Feasible?= ", is_feasible(x_s))
 
         p.visualize(x_s; px=px, py=py)
     end
