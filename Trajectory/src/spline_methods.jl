@@ -1,5 +1,4 @@
 using Plots
-using Images
 
 function get_bins(K=4)
     # For the given number of knots, find the binomial bezier coefficients. Hard-coded for now
@@ -28,8 +27,7 @@ function get_coords(knots, grid)
     return grid * vcat(knots, knots[1, :]')
 end
 
-function plot_splines(flags, knots, coords, xmin=-2, xmax=2, ymin=-2, ymax=2)
-    flagred = load("src/assets/flag.png")
+function plot_splines(flags, knots, coords, xmin=-3, xmax=3, ymin=-3, ymax=3)
     p = plot(flags[:, 1], flags[:, 2], seriestype=:scatter, markershape=:utriangle, markercolor=:red, markersize=8,
         xlims=[xmin, xmax], ylims=[ymin,ymax])
     plot!(p, knots[:, 1], knots[:, 2], seriestype=:scatter, markercolor=:blue)
@@ -63,7 +61,6 @@ knots2 = [
     3 4;
     -3 4;
 ]
-# plot_splines(flags, knots, get_coords(knots, grid))
 
 grid1 = get_grid(knots1)
 grid2 = get_grid(knots2)
@@ -71,6 +68,9 @@ t1 = get_coords(knots1, grid1)
 t2 = get_coords(knots2, grid2)
 l1 = get_length(t1)
 l2 = get_length(t2)
+
+plot_splines(flags, knots1, get_coords(knots1, grid1))
+
 
 # Two cars move in same speed, so we work with the one who has the shortest trajectory length
 # and extrapolate for the longer one
