@@ -1,5 +1,7 @@
-using Plots
+include("constants.jl")
 
+using Plots
+using Images
 function get_bins(K=4)
     # For the given number of knots, find the binomial bezier coefficients. Hard-coded for now
     if K == 3
@@ -14,7 +16,7 @@ function get_bins(K=4)
     throw("Hardcoded coefficients only for 3,4,5 flags")
 end
 
-function get_grid(knots, points=100)
+function get_grid(knots, points=50)
     K = size(knots)[1]
     bins = get_bins(K)
     t = 0:(1/points):1
@@ -22,18 +24,12 @@ function get_grid(knots, points=100)
 end
 
 function get_coords(knots, grid)
-    println(size(grid))
-    println(size(knots))
+    # println(size(grid))
+    # println(size(knots))
     return grid * vcat(knots, knots[1, :]')
 end
 
-function plot_splines(flags, knots, coords, xmin=-3, xmax=3, ymin=-3, ymax=3)
-    p = plot(flags[:, 1], flags[:, 2], seriestype=:scatter, markershape=:utriangle, markercolor=:red, markersize=8,
-        xlims=[xmin, xmax], ylims=[ymin,ymax])
-    plot!(p, knots[:, 1], knots[:, 2], seriestype=:scatter, markercolor=:blue)
-    plot!(p, coords[:, 1], coords[:, 2], ls=:dot)
-    display(p)
-end
+
 
 function get_length(coords)
     # return length of bezier curve
@@ -44,87 +40,84 @@ function get_length(coords)
     return d
 end
 
-flags = [-1 -1;
-         -1 1;
-         3 2;
-         3 3]
-knots1 = [
-    -1 -1;
-    2 1;
-    3 3;
-    3 4;
-]
-
-knots2 = [
-    -2 -1;
-    2 2;
-    3 4;
-    -3 4;
-]
-
-grid1 = get_grid(knots1)
-grid2 = get_grid(knots2)
-t1 = get_coords(knots1, grid1)
-t2 = get_coords(knots2, grid2)
-l1 = get_length(t1)
-l2 = get_length(t2)
-
-plot_splines(flags, knots1, get_coords(knots1, grid1))
-
-
-# Two cars move in same speed, so we work with the one who has the shortest trajectory length
-# and extrapolate for the longer one
-short, shortlength, long, longlength = l1 < l2 ? t1, l1, t2, l2 : t2, l2, t1, l1
-
-function collide(l1s, l1e, l2s, l2e)
-    a1 = l1e[2] - l1s[2]
-    b1 = l1s[1] - l1e[1]
-    c1 = a1 * l1s[1] + b1 * l1[2]
-    a2 = l2e[2] - l2s[2]
-    b2 = l2s[1] - l2e[1]
-    c2 = a2 * l2s[1] + b2 * l2s[2]
-    Δ = a1 * b2 - a2 * b1
-    intersect = [(b2 * c1 - b1 * c2) / Δ, (a1 * c2 - a2 * c1) / Δ]
-    if min(l1s[1], l1e[1]) <= intersect[1] <= max(l1s[1], l1e[1]) &&
-        min(l1s[2], l1e[2]) <= intersect[2] <= max(l1s[2], l1e[2]) &&
-        min(l2s[1], l2e[1]) <= intersect[1] <= max(l2s[1], l2e[1]) &&
-        min(l2s[2], l2e[2]) <= intersect[2] <= max(l2s[2], l2e[2]) &&
-        return true, intersect  # intersects
+function collide(l1e, l2e)
+    if ((l1e[1] - l2e[1])^2 + (l1e[2] - l2e[2])^2)^0.5 < CR
+        return true, l1e
     end
-    return false, intersect # does not intersect
+    return false, l1e
 end
 
-function score(flags, short, shortlength, long, longlength, fr=0.5)
-    # short trajectory vs long trajectory
-    T = size(short)[1]
-    NF = size(flags)[1]
-    ratio = shortlength / longlength
-    
-    captured = Dict([(i, 0) for i in 1:NF])
-    distanceS = [Inf for _ in 1:NF]     # distance with all flags
-    distanceL = [Inf for _ in 1:NF]     # distance with all flags
 
+# Function to calculate distance between two points
+function distance(p1, p2)
+    return norm(p2 - p1)
+end
+
+function interpolate(a, b, d)
+    D = distance(a, b)
+    return a + (b - a) * d/D
+end
+
+# Function to interpolate and find points on the curve
+function generate_uniform_points(curve :: Matrix{Float64}, velocity = 1)
+    segment = 1
+    NSegment = size(curve)[1]
+    points = [curve[1, :]]
+    new_point = Nothing
+    while true
+        remaining = velocity
+        while true
+            d = distance(curve[segment, :], curve[segment+1, :])
+            if remaining < d
+                new_point = interpolate(curve[segment, :], curve[segment+1, :], remaining)
+                curve[segment, :] = new_point
+                break
+            end
+            remaining -= d
+            segment += 1
+            if segment >= NSegment return points end
+        end 
+        push!(points, new_point)
+    end
+end
+
+function score(flags, short, shortlength, long, longlength, throwcollision=true, simulate=false)
+    # short trajectory vs long trajectory
+    velocity = 0.2
+    short = generate_uniform_points(short, velocity)
+    long = generate_uniform_points(long, velocity)
+
+    Ts = size(short)[1]
+    Tl = size(long)[1]
+    NF = size(flags)[1]
+    
+    captured = Dict([(i, (0, 0.0)) for i in 1:NF])
+    distanceS = [(Inf, Inf) for _ in 1:NF]     # distance with all flags
+    distanceL = [(Inf, Inf) for _ in 1:NF]     # distance with all flags
+
+    # return if in simulation mode
+    history = []
     ts = tl = 0
-    last_long = long[0, :]
-    last_short = short[0, :]
+
     while true
         ts += 1
-        tl += ratio
-        tl_a, tl_b = floor(tl), ceil(tl)
-        long_a = long[tl_a, :]
-        long_b = long[tl_b, :]
-        delta = long_b - long_a
-        long_coord = long_a + (tl - tl_a) * delta
-        if ts <= T
-            short_coord = short[ts, :]
+        tl += 1
+        short_coord = long_coord = Nothing
+        if ts <= Ts
+            short_coord = short[ts]
         else
             short_coord = false     # shorty completed trajectory
         end
-
-        if short_coord != false
+        if tl <= Tl
+            long_coord = long[tl]
+        else
+            long_coord = false     # shorty completed trajectory
+        end
+        if short_coord == false && long_coord == false break end
+        if short_coord != false && long_coord != false
             # check collision of trajectories
-            collides, collision_point = collide(last_short, short_coord, last_long, long_coord)
-            if collides
+            collides, collision_point = collide(short_coord, long_coord)
+            if collides && throwcollision
                 ds_c = (collision_point[1] - last_short[1])^2 + (collision_point[2] - last_short[2])^2
                 dl_c = (collision_point[1] - last_long[1])^2 + (collision_point[2] - last_long[2])^2
                 if ds_c < dl_c
@@ -136,51 +129,53 @@ function score(flags, short, shortlength, long, longlength, fr=0.5)
                 end
             end
         end
-        last_short = short_coord
-        last_long = long_coord
 
         # calculate score for flags
         for f in 1:NF
-            if captured[f] != 0 continue end
+            if captured[f][1] != 0 continue end
             ds = dl = false
             if short_coord != false
-                ds = (flags[f, 1] - short_coord[1])^2 + (flags[f, 2] - short_coord[2])^2
-                distanceS[f] = min(ds, distanceS[f])
+                ds = ((flags[f, 1] - short_coord[1])^2 + (flags[f, 2] - short_coord[2])^2)^0.5
+                distanceS[f] = min((ds, ts), distanceS[f])
             end
-            dl = (flags[f, 1] - long_coord[1])^2 + (flags[f, 2] - long_coord[2])^2
-            distanceL[f] = min(dl, distanceL[f])
-            
+            if long_coord != false
+                dl = ((flags[f, 1] - long_coord[1])^2 + (flags[f, 2] - long_coord[2])^2)^0.5
+                distanceL[f] = min((dl, tl), distanceL[f])
+            end
+                        
             # check capture
-            if ds != false && ds <= fr && dl <= fr
+            if ds != false && ds <= FR && dl !=false && dl <= FR
                 # simultaneous capture!
-                captured[f] = ds < dl ? -1 : 1
-            elseif ds !=false && ds <= fr
-                captured[f] = -1
-            elseif dl <= fr
-                captured[f] = 1
+                captured[f] = ds < dl ? (-1, ts) : (1, tl)
+            elseif ds !=false && ds <= FR
+                captured[f] = (-1, ts)
+            elseif ds !=false && dl <= FR
+                captured[f] = (1, tl)
             end
         end
-
-        # adjust ratio if short trajectory has ended
-        if ts == T
-            tl = floor(tl)
-            ratio = 1
-        end
-        if tl >= T break end
+        if simulate push!(history, (long_coord = copy(long_coord), short_coord=copy(short_coord == false ? short[Ts] : short_coord), 
+                        captured=copy(captured))) end
     end
 
     #calculate score
     short_score = 0
     long_score = 0
+    distance_factor = 0.1
+    flag_score = 20
     for f in 1:NF
-        if captured[f] == -1
+        if captured[f][1] == -1 # captured by short
             short_score += flag_score
-        elseif captured[f] == 1
+            long_score -= distance_factor*distanceL[f][1]^0.5
+        elseif captured[f][1] == 1  #captured by long
             long_score += flag_score
+            short_score -= distance_factor*distanceS[f][1]^0.5
         else
-            short_score -= distance_factor * distanceS[f]
-            long_score -= distance_factor * distanceL[f]
+            short_score -= distanceS[f][1]^0.5
+            long_score -= distanceL[f][1]^0.5
         end
+        
     end
-    return short_score, long_score
+    # println(captured)
+    if simulate return history end
+    return short_score - 0.1*shortlength, long_score -0.1*longlength
 end

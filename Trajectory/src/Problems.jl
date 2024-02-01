@@ -12,6 +12,7 @@ module Problems
         g::Function         # the Constraint function
         I::Vector{UInt}     # Index set of variables
         n::Int              # Number of samples to generate
+        alpha::Float64
     end
 
     (F::FunctionTuple)(x) = Tuple(f(x) for f in F)
@@ -33,7 +34,6 @@ module Problems
         # x_s is initial feasible point. Default is all zeros
         x_s :: Vector{Float64} = zeros(N)
         visualize:: Function = (x; kwargs...) -> ()   # the visualization function
-        alpha = 2
         cooldown = 1        # means that the alpha will remain constant throughout
         MAX_ITER = 100      # default iteration of 100
     end
