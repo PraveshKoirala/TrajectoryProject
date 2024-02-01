@@ -12,7 +12,8 @@ module Trajectory
     using Base.Threads
 
     # p for problem
-    using .RSI: RSProblemI as p
+    # using .RS: RSProblem as p
+    using .RSI: RSIProblem as p
 
 
     function evaluate(expression, x)

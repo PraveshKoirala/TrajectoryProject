@@ -22,31 +22,35 @@ module RS
         except_i = setdiff(collect(1:Z), [i])
         OD[i, except_i] = Πᴼ[i] .* Πᵀ[except_i] ./ sum(Πᵀ[except_i])
     end
-    OD .*= 100      # rescaled so that it works better with learning rate.
-    Πᴰ .*= 10
 
-    @assert (sum(Πᴼ) == 1 && sum(Πᵀ) == 1 && sum(Πᴰ) ≈ 10 && sum(OD) ≈ 100)
+    @assert (sum(Πᴼ) == 1 && sum(Πᵀ) == 1 && sum(Πᴰ) ≈ 1 && sum(OD) ≈ 1)
 
     # Dimensions
-    fᵁrᵁcᵁ_dim = 1:3
-    fᴸrᴸcᴸ_dim = 4:6
-    Aᵁ_dim = 7:(7+Z-1)
-    Aᴸ_dim = (7+Z) : (7+2Z-1)
-    Pᵁ_dim = collect((7+2Z):(7+2Z+Z^2-1))
-    Pᴸ_dim = collect((7+2Z+Z^2):(7+2Z+2Z^2-1))
-    dim = (7+2Z+2Z^2)   # Total dimensions
+    rᵁcᵁ_dim = 1:2
+    rᴸcᴸ_dim = 3:4
+    Aᵁ_dim = 5:(5+Z-1)
+    Aᴸ_dim = (5+Z) : (5+2Z-1)
+    Pᵁ_dim = collect((5+2Z):(5+2Z+Z^2-1))
+    Pᴸ_dim = collect((5+2Z+Z^2):(5+2Z+2Z^2-1))
+    dim = (5+2Z+2Z^2-1)   # Total dimensions
 
-    if Z != 3
-        println("Don't forget to ammend the snippet below")
-    end
+    println("Dimensions:")
+    println("rᵁcᵁ_dim = ", rᵁcᵁ_dim, " (", length(rᵁcᵁ_dim), ")")
+    println("rᴸcᴸ_dim = ", rᴸcᴸ_dim, " (", length(rᴸcᴸ_dim), ")")
+    println("Aᵁ_dim = ", Aᵁ_dim, " (", length(Aᵁ_dim), ")")
+    println("Aᴸ_dim = ", Aᴸ_dim, " (", length(Aᴸ_dim), ")")
+    println("Pᵁ_dim = ", Pᵁ_dim, " (", length(Pᵁ_dim), ")")
+    println("Pᴸ_dim = ", Pᴸ_dim, " (", length(Pᴸ_dim), ")")
+    println()
+
     # Diagonal elements in demand matrices are always 0 (and unchanged)
-    Pᵁ_dim_p = setdiff(Pᵁ_dim, [13, 17, 21])
-    Pᴸ_dim_p = setdiff(Pᴸ_dim, [22, 26, 30])
+    Pᵁ_dim_p = setdiff(Pᵁ_dim, Pᵁ_dim[1:Z+1:end])
+    Pᴸ_dim_p = setdiff(Pᴸ_dim, Pᴸ_dim[1:Z+1:end])
     
-    Aᴾ = [10, 10, 10]  # availability of public transit
+    Aᴾ = [1, 1, 1]  # availability of public transit
     λ = 0.5
     g = 1               # gas cost
-    fᴾ = 15             # fixed initial cost for public vehicles
+    fᴾ = 10             # fixed initial cost for public vehicles
     rᴾ = 0.5            # rates for public vehicles
 
     function F_P(X)         # Passenger's objective
@@ -59,8 +63,8 @@ module RS
         end
 
         Pᴾ = reshape(OD - Pᵁ - Pᴸ, Z, Z)
-        fᵁ, rᵁ, _ = X[fᵁrᵁcᵁ_dim]
-        fᴸ, rᴸ, _ = X[fᴸrᴸcᴸ_dim]
+        rᵁ, _ = X[rᵁcᵁ_dim]
+        rᴸ, _ = X[rᴸcᴸ_dim]
         Aᵁ = X[Aᵁ_dim]
         Aᴸ = X[Aᴸ_dim]
         Pᵁᵢ = sum(Pᵁ, dims=2)
@@ -69,8 +73,8 @@ module RS
         acc = 0
         for i in 1:Z
             for j in 1:Z
-                acc += Pᵁ[i,j] * (fᵁ + rᵁ * C[i, j] + λ * Pᵁᵢ[i]/(Aᵁ[i]+ϵ)) +
-                       Pᴸ[i,j] * (fᴸ + rᴸ * C[i, j] + λ * Pᴸᵢ[i]/(Aᴸ[i]+ϵ)) +
+                acc += Pᵁ[i,j] * (rᵁ * C[i, j] + λ * Pᵁᵢ[i]/(Aᵁ[i]+ϵ)) +
+                       Pᴸ[i,j] * (rᴸ * C[i, j] + λ * Pᴸᵢ[i]/(Aᴸ[i]+ϵ)) +
                        Pᴾ[i,j] * (fᴾ + rᴾ * C[i, j] + λ * Pᴾᵢ[i]/(Aᴾ[i]+ϵ))
             end
         end
@@ -88,8 +92,8 @@ module RS
         Pᵁ = reshape(X[Pᵁ_dim], Z, Z)
         Pᴸ = reshape(X[Pᴸ_dim], Z, Z)
         # Pᴾ = reshape(OD - Pᵁ - Pᴸ, Z, Z)
-        _, _, cᵁ = X[fᵁrᵁcᵁ_dim]
-        _, _, cᴸ = X[fᴸrᴸcᴸ_dim]
+        _, cᵁ = X[rᵁcᵁ_dim]
+        _, cᴸ = X[rᴸcᴸ_dim]
         Aᵁ = X[Aᵁ_dim]
         Aᴸ = X[Aᴸ_dim]
 
@@ -102,8 +106,8 @@ module RS
     end
 
     function G_D(X)
-        _, _, cᵁ = X[fᵁrᵁcᵁ_dim]
-        _, _, cᴸ = X[fᴸrᴸcᴸ_dim]
+        _, cᵁ = X[rᵁcᵁ_dim]
+        _, cᴸ = X[rᴸcᴸ_dim]
         Aᵁ = X[Aᵁ_dim]
         Aᴸ = X[Aᴸ_dim]
         return vcat(Πᴰ - Aᵁ - Aᴸ, Aᵁ, Aᴸ, [cᵁ-g, cᴸ-g])
@@ -111,18 +115,18 @@ module RS
 
     function F_U(X)         # Uber
         Pᵁ = reshape(X[Pᵁ_dim], Z, Z)
-        fᵁ, rᵁ, cᵁ = X[fᵁrᵁcᵁ_dim]
+        rᵁ, cᵁ = X[rᵁcᵁ_dim]
         acc = 0
         for i in 1:Z
             for j in 1:Z
-                acc += Pᵁ[i,j] * (fᵁ + (rᵁ - cᵁ) * C[i, j])
+                acc += Pᵁ[i,j] * ((rᵁ - cᵁ) * C[i, j])
             end
         end
         return -acc         # maximization
     end
 
     function G_U(X)
-        fᵁ, rᵁ, cᵁ = X[fᵁrᵁcᵁ_dim]
+        rᵁ, cᵁ = X[rᵁcᵁ_dim]
         return [
             cᵁ,
             cᵁ-g
@@ -131,18 +135,18 @@ module RS
 
     function F_L(X)         # Lyft
         Pᴸ = reshape(X[Pᴸ_dim], Z, Z)
-        fᴸ, rᴸ, cᴸ = X[fᴸrᴸcᴸ_dim]
+        rᴸ, cᴸ = X[rᴸcᴸ_dim]
         acc = 0
         for i in 1:Z
             for j in 1:Z
-                acc += Pᴸ[i,j] * (fᴸ + (rᴸ - cᴸ) * C[i, j])
+                acc += Pᴸ[i,j] * ((rᴸ - cᴸ) * C[i, j])
             end
         end
         return -acc     # maximization
     end
 
     function G_L(X)
-        fᴸ, rᴸ, cᴸ = X[fᴸrᴸcᴸ_dim]
+        rᴸ, cᴸ = X[rᴸcᴸ_dim]
         return [
             cᴸ,
             cᴸ-g
@@ -163,34 +167,34 @@ module RS
     RSProblem = MultiLevelProblem(dim)
     n = 10
     if arch == "ULDP"
-        RSProblem.addLevel!(Problem(F_U, G_U, fᵁrᵁcᵁ_dim, 2n))
-        RSProblem.addLevel!(Problem(F_L, G_L, fᴸrᴸcᴸ_dim, 2n))
+        RSProblem.addLevel!(Problem(F_U, G_U, rᵁcᵁ_dim, 2n))
+        RSProblem.addLevel!(Problem(F_L, G_L, rᴸcᴸ_dim, 2n))
         RSProblem.addLevel!(Problem(F_D, G_D, vcat(Aᵁ_dim, Aᴸ_dim), 4n))
         RSProblem.addLevel!(Problem(F_P, G_P, vcat(Pᵁ_dim_p, Pᴸ_dim_p), 40n))
         RSProblem.addLevel!(Problem(F_dummy, G_dummy, [], 0))   # dummy won't have any effect
     elseif arch == "LUDP"
-        RSProblem.addLevel!(Problem(F_L, G_L, fᴸrᴸcᴸ_dim, 2n))
-        RSProblem.addLevel!(Problem(F_U, G_U, fᵁrᵁcᵁ_dim, 2n))
+        RSProblem.addLevel!(Problem(F_L, G_L, rᴸcᴸ_dim, 2n))
+        RSProblem.addLevel!(Problem(F_U, G_U, rᵁcᵁ_dim, 2n))
         RSProblem.addLevel!(Problem(F_D, G_D, vcat(Aᵁ_dim, Aᴸ_dim), 4n))
         RSProblem.addLevel!(Problem(F_P, G_P, vcat(Pᵁ_dim_p, Pᴸ_dim_p), 40n))
         RSProblem.addLevel!(Problem(F_dummy, G_dummy, [], 0))   # dummy won't have any effect
     elseif arch == "(LU)DP"
-        RSProblem.addLevel!(Problem((F_L, F_U), G_LU, vcat(fᴸrᴸcᴸ_dim, fᵁrᵁcᵁ_dim), 4n))
+        RSProblem.addLevel!(Problem((F_L, F_U), G_LU, vcat(rᴸcᴸ_dim, rᵁcᵁ_dim), 4n))
         RSProblem.addLevel!(Problem(F_D, G_D, vcat(Aᵁ_dim, Aᴸ_dim), 4n))
         RSProblem.addLevel!(Problem(F_P, G_P, vcat(Pᵁ_dim_p, Pᴸ_dim_p), 40n))
         RSProblem.addLevel!(Problem(F_dummy, G_dummy, [], 0))   # dummy won't have any effect
     end
 
     function RSProblem.visualize(X; kwargs...)
-        fᵁrᵁcᵁ = X[fᵁrᵁcᵁ_dim]
-        fᴸrᴸcᴸ = X[fᴸrᴸcᴸ_dim]
-        Aᵁ = X[Aᵁ_dim] ./ 10
-        Aᴸ = X[Aᴸ_dim] ./ 10
-        Pᵁ = reshape(X[Pᵁ_dim], Z, Z) ./ 100
-        Pᴸ = reshape(X[Pᴸ_dim], Z, Z) ./ 100
-        Pᴾ = reshape(OD - Pᵁ - Pᴸ, Z, Z) ./ 100
-        println("fᵁrᵁcᵁ = ", fᵁrᵁcᵁ)
-        println("fᴸrᴸcᴸ = ", fᴸrᴸcᴸ)
+        rᵁcᵁ = X[rᵁcᵁ_dim]
+        rᴸcᴸ = X[rᴸcᴸ_dim]
+        Aᵁ = X[Aᵁ_dim]
+        Aᴸ = X[Aᴸ_dim]
+        Pᵁ = reshape(X[Pᵁ_dim], Z, Z)
+        Pᴸ = reshape(X[Pᴸ_dim], Z, Z)
+        Pᴾ = reshape(OD - Pᵁ - Pᴸ, Z, Z)
+        println("rᵁcᵁ = ", rᵁcᵁ)
+        println("rᴸcᴸ = ", rᴸcᴸ)
         println("Aᵁ = ", Aᵁ)
         println("Aᴸ = ", Aᴸ)
         println("Pᵁ = ", Pᵁ)
@@ -199,18 +203,22 @@ module RS
     end
 
     function find_feasible_point()
-        fᵁrᵁcᵁ = [5, 2, 1]
-        fᴸrᴸcᴸ = [4, 1.5, 1]
+        rᵁcᵁ = [2, 1]
+        rᴸcᴸ = [1.5, 1]
         Aᵁ = Πᴰ ./ 2
         Aᴸ = Πᴰ ./ 2
         Pᵁ = OD ./ 3
         Pᴸ = OD ./ 3
-        return vcat(fᵁrᵁcᵁ, fᴸrᴸcᴸ, Aᵁ, Aᴸ, vec(Pᵁ), vec(Pᴸ))
+        return vcat(rᵁcᵁ, rᴸcᴸ, Aᵁ, Aᴸ, vec(Pᵁ), vec(Pᴸ))
     end
 
     RSProblem.x_s = find_feasible_point()
     # RSProblem.x_s = [0.921729805025922, 26.205583958240894, 1.2143599111225507, 4.76329432387886, 25.011495450687793, 1.6877590743896507, 0.4008928153410466, 2.972331763578343, 0.6257519074322478, 0.034245047698801545, 0.2991469250276102, 4.799831936264837, 0.0, 0.10800499029668909, 1.2384515946854138, 0.5273070315738075, 0.0, 1.4099191544988732, 0.7537198708446567, 11.302535013863094, 0.0, 0.0, 1.0395392623228243, 2.4575180050456713, 0.07643642149219798, 0.0, 15.700322251176022, 0.1071785821558191, 0.21377907868414503, 0.0]
     RSProblem.MAX_ITER = 150
-    RSProblem.alpha = 1
+    RSProblem.alpha = fill(1., dim)
+    RSProblem.alpha[Aᵁ_dim] .= 0.1
+    RSProblem.alpha[Aᴸ_dim] .= 0.1
+    RSProblem.alpha[Pᵁ_dim] .= 0.01
+    RSProblem.alpha[Pᴸ_dim] .= 0.01
     export RSProblem
 end
